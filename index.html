@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mechanic Tracker</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: "Segoe UI", Arial, sans-serif;
+    user-select: none;
+  }
+
+  #panel {
+    width: 460px;
+    background: rgba(10, 10, 14, 0.92);
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 10px 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+  }
+
+  #panel.hidden { display: none; }
+
+  #header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  #title { color: #fff; font-weight: 700; font-size: 14px; }
+
+  #reset-btn {
+    background: #7a2f2f;
+    border: none;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  #reset-btn:hover { background: #8f3a3a; }
+
+  #preset-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  #preset-row label { color: #8fa3c9; font-size: 11px; }
+
+  #preset-dropdown {
+    position: relative;
+    flex: 1;
+  }
+
+  #preset-dropdown-btn {
+    width: 100%;
+    text-align: left;
+    background: #1a1c22;
+    color: #eee;
+    border: 1px solid #3a3a3a;
+    border-radius: 5px;
+    font-size: 12px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  #preset-dropdown-btn:after {
+    content: '▾';
+    float: right;
+    color: #888;
+  }
+
+  #preset-dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 2px;
+    background: #1a1c22;
+    border: 1px solid #3a3a3a;
+    border-radius: 5px;
+    z-index: 50;
+    overflow: hidden;
+  }
+  #preset-dropdown-list.hidden { display: none; }
+
+  .preset-option {
+    padding: 6px 8px;
+    font-size: 12px;
+    color: #ddd;
+    cursor: pointer;
+  }
+  .preset-option:hover { background: #2c2f3a; }
+  .preset-option.active { background: #3a2f1e; color: #ffd97a; }
+
+  .section-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    margin: 8px 0 4px 0;
+  }
+
+  .section-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .section-col {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mana-grid {
+    display: grid;
+    grid-template-columns: 56px 1fr 1fr;
+    gap: 4px 8px;
+    align-items: center;
+  }
+
+  .mana-col-label {
+    color: #8fa3c9;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .mana-row-label {
+    color: #8fa3c9;
+    font-size: 12px;
+  }
+
+  .compass-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 42px);
+    gap: 6px;
+    justify-content: center;
+    margin: 6px 0;
+  }
+
+  .compass-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #1c1c22;
+    border: 2px solid #3a3a3a;
+    color: #ccc;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .compass-btn:hover { border-color: #555; }
+  .compass-btn.active {
+    background: #5a4a1e;
+    border-color: #e0c46c;
+    color: #ffd97a;
+    box-shadow: 0 0 6px rgba(224,196,108,0.5);
+  }
+
+  .compass-btn.color-red { border-color: #7a2f2f; }
+  .compass-btn.color-red.active {
+    background: #7a2f2f;
+    border-color: #e05a5a;
+    color: #fff;
+    box-shadow: 0 0 6px rgba(224,90,90,0.5);
+  }
+
+  .compass-btn.color-purple { border-color: #5a2f7a; }
+  .compass-btn.color-purple.active {
+    background: #5a2f7a;
+    border-color: #b06ae0;
+    color: #fff;
+    box-shadow: 0 0 6px rgba(176,106,224,0.5);
+  }
+
+  .compass-btn.zone-red { outline: 3px solid #ff4444; outline-offset: 2px; }
+  .compass-btn.zone-yellow { outline: 3px solid #e0c23c; outline-offset: 2px; }
+  .compass-btn.zone-blue { outline: 3px solid #3c8ce0; outline-offset: 2px; }
+  .compass-btn.zone-purple-outline { outline: 3px solid #b06ae0; outline-offset: 2px; }
+
+  .compass-center {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #555;
+    font-size: 18px;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+
+  .field-label {
+    color: #8fa3c9;
+    font-size: 12px;
+  }
+
+  .btn-group {
+    display: flex;
+    gap: 4px;
+  }
+
+  .opt-btn {
+    background: #22242c;
+    border: none;
+    color: #99a;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 5px;
+    padding: 5px 9px;
+    cursor: pointer;
+  }
+  .opt-btn:hover { background: #2c2f3a; }
+
+  .opt-btn.real.active { background: #1e7a4f; color: #fff; }
+  .opt-btn.fake.active { background: #7a1e6e; color: #fff; }
+  .opt-btn.short.active { background: #b5772c; color: #fff; }
+  .opt-btn.long.active { background: #2c4fb5; color: #fff; }
+  .opt-btn.none.active { background: #4a4a55; color: #fff; }
+  .opt-btn.fire.active { background: #a02020; color: #fff; }
+  .opt-btn.water.active { background: #2050a0; color: #fff; }
+  .opt-btn.generic.active { background: #5a4a1e; color: #ffd97a; }
+  .opt-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+  .callout {
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin: 8px 0;
+    font-size: 12px;
+    color: #ddd;
+    line-height: 1.6;
+  }
+
+  .callout .fact { color: #f0e0a0; font-weight: 700; }
+  .callout .icon { margin-right: 4px; }
+
+  #callout-body { margin-top: 4px; }
+
+  #show-toggle-wrapper { text-align: center; margin-top: 6px; }
+  #show-toggle {
+    background: #222; border: 1px solid #444; color: #bbb;
+    font-size: 10px; border-radius: 4px; padding: 3px 8px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="panel">
+  <div id="header">
+    <span id="title">Mechanic Tracker</span>
+    <button id="reset-btn" onclick="resetAll()">Reset</button>
+  </div>
+
+  <div id="preset-row">
+    <label>Fight:</label>
+    <div id="preset-dropdown">
+      <button id="preset-dropdown-btn" onclick="togglePresetDropdown()"></button>
+      <div id="preset-dropdown-list" class="hidden"></div>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+
+  <div id="callout-body"></div>
+</div>
+
+<div id="show-toggle-wrapper">
+  <button id="show-toggle" onclick="togglePanel()">Hide/Show Panel</button>
+</div>
+
+<script>
+/* ============================================================
+   ENGINE
+   Generic field types:
+   - "binary": two independent options (e.g. Real/Fake)
+   - "select": N independent options, no linking
+   - "linked-swap": two options; picking one auto-sets the OPPOSITE
+                    option on a linked field elsewhere. Toggling off
+                    clears both. (e.g. Water Short/Long <-> Lightning)
+   - "linked-exclusive": options include "none"; picking a non-none
+                    value forces the linked field to "none" and locks
+                    it, since only one of the pair can have that value.
+   ============================================================ */
+
+  function makeInitialState(preset) {
+    const state = {};
+    preset.sections.forEach(section => {
+      state[section.id] = {};
+      section.fields.forEach(field => {
+        state[section.id][field.id] = null;
+      });
+    });
+    return state;
+  }
+
+  function findField(preset, sectionId, fieldId) {
+    const section = preset.sections.find(s => s.id === sectionId);
+    if (!section) return null;
+    return section.fields.find(f => f.id === fieldId) || null;
+  }
+
+  function handleFieldClick(preset, state, sectionId, fieldId, value) {
+    const field = findField(preset, sectionId, fieldId);
+    if (!field) return;
+
+    if (field.type === 'binary' || field.type === 'select') {
+      state[sectionId][fieldId] = (state[sectionId][fieldId] === value) ? null : value;
+      return;
+    }
+
+    if (field.type === 'linked-swap') {
+      const { section: lSec, field: lField } = field.linkedTo;
+      const current = state[sectionId][fieldId];
+      if (current === value) {
+        state[sectionId][fieldId] = null;
+        state[lSec][lField] = null;
+      } else {
+        state[sectionId][fieldId] = value;
+        const [a, b] = field.options.map(o => o.value);
+        state[lSec][lField] = (value === a) ? b : a;
+      }
+      return;
+    }
+
+    if (field.type === 'linked-exclusive') {
+      const { section: lSec, field: lField } = field.linkedTo;
+      const current = state[sectionId][fieldId];
+      if (current === value) {
+        state[sectionId][fieldId] = null;
+        if (state[lSec][lField] === 'none') state[lSec][lField] = null;
+      } else {
+        state[sectionId][fieldId] = value;
+        if (field.exclusiveValues.includes(value)) {
+          state[lSec][lField] = 'none';
+        } else if (value === 'none' && state[lSec][lField] === 'none') {
+          state[lSec][lField] = null;
+        }
+      }
+      return;
+    }
+  }
+
+  function fieldRowHTML(sectionId, field) {
+    const buttons = field.options.map(opt => {
+      const cls = opt.cls || 'generic';
+      const label = opt.icon ? `${opt.icon} ${opt.label}` : opt.label;
+      return `<button class="opt-btn ${cls}" data-section="${sectionId}" data-field="${field.id}" data-value="${opt.value}">${label}</button>`;
+    }).join('');
+    return `
+      <div class="field-row">
+        <span class="field-label">${field.label}</span>
+        <div class="btn-group">${buttons}</div>
+      </div>
+    `;
+  }
+
+  function sectionHTML(section) {
+    if (section.customRender) {
+      return `<div class="section-title">${section.title}</div>${section.customRender()}`;
+    }
+    const rows = section.fields.map(f => fieldRowHTML(section.id, f)).join('');
+    return `<div class="section-title">${section.title}</div>${rows}`;
+  }
+
+  function renderButtonStates(preset, state) {
+    document.querySelectorAll('[data-section]').forEach(btn => {
+      const sectionId = btn.dataset.section, fieldId = btn.dataset.field, value = btn.dataset.value;
+      btn.classList.toggle('active', state[sectionId][fieldId] === value);
+    });
+
+    // Disable locked-exclusive options on both sides of a linked-exclusive pair
+    preset.sections.forEach(section => {
+      section.fields.forEach(field => {
+        if (field.type !== 'linked-exclusive') return;
+        const { section: lSec, field: lField } = field.linkedTo;
+        const otherClaimed = field.exclusiveValues.includes(state[lSec][lField]);
+        document.querySelectorAll(`[data-section="${section.id}"][data-field="${field.id}"]`).forEach(btn => {
+          const isExclusiveVal = field.exclusiveValues.includes(btn.dataset.value);
+          btn.classList.toggle('disabled', otherClaimed && isExclusiveVal && state[section.id][field.id] !== btn.dataset.value);
+        });
+      });
+    });
+  }
+
+  function renderCallouts(preset, state) {
+    const body = document.getElementById('callout-body');
+    const results = preset.buildCallouts(state) || [];
+    body.innerHTML = results.map(html => `<div class="callout">${html}</div>`).join('');
+  }
+
+  /* ============================================================
+     SHARED HELPERS (used by preset callout builders)
+     ============================================================ */
+
+  function xnor(a, b) {
+    if (!a || !b) return null;
+    return (a === b) ? 'REAL' : 'FAKE';
+  }
+
+  function joinOrPlaceholder(lines, placeholder) {
+    const filtered = lines.filter(Boolean);
+    if (filtered.length === 0) return `<span style="color:#666;">${placeholder}</span>`;
+    return filtered.join('<br>');
+  }
+
+  /* ============================================================
+     PRESET: Dancing Mad (Ultimate) - Phase 4
+     ============================================================ */
+
+  const DMU_P4_PRESET = {
+    id: 'dmu-p4',
+    name: 'Dancing Mad (Ultimate) - Phase 4',
+    layoutRows: [
+      ['exdeath1', 'chaos1'],
+      ['exdeath2', 'chaos2'],
+      ['mana']
+    ],
+    sections: [
+      {
+        id: 'exdeath1', title: 'Neo Exdeath #1',
+        fields: [
+          { id: 'cast', label: 'Cast', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'duration', label: 'Water/Lightning', type: 'linked-swap',
+            linkedTo: { section: 'exdeath2', field: 'duration' },
+            options: [{ value: 'lightning-long', label: 'Short', cls: 'short' }, { value: 'water-long', label: 'Long', cls: 'long' }] },
+          { id: 'accel', label: 'Accel', type: 'linked-exclusive',
+            linkedTo: { section: 'exdeath2', field: 'accel' }, exclusiveValues: ['short', 'long'],
+            options: [{ value: 'short', label: 'S', cls: 'short' }, { value: 'long', label: 'L', cls: 'long' }, { value: 'none', label: 'None', cls: 'none' }] }
+        ]
+      },
+      {
+        id: 'chaos1', title: 'Chaos #1',
+        fields: [
+          { id: 'cast', label: 'Cast', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'type', label: 'Inferno/Tsunami', type: 'linked-swap',
+            linkedTo: { section: 'chaos2', field: 'type' },
+            options: [{ value: 'fire', label: 'Inferno', cls: 'fire', icon: '🔥' }, { value: 'water', label: 'Tsunami', cls: 'water', icon: '🌊' }] }
+        ]
+      },
+      {
+        id: 'exdeath2', title: 'Neo Exdeath #2',
+        fields: [
+          { id: 'cast', label: 'Cast', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'duration', label: 'Water/Lightning', type: 'linked-swap',
+            linkedTo: { section: 'exdeath1', field: 'duration' },
+            options: [{ value: 'lightning-long', label: 'Short', cls: 'short' }, { value: 'water-long', label: 'Long', cls: 'long' }] },
+          { id: 'accel', label: 'Accel', type: 'linked-exclusive',
+            linkedTo: { section: 'exdeath1', field: 'accel' }, exclusiveValues: ['short', 'long'],
+            options: [{ value: 'short', label: 'S', cls: 'short' }, { value: 'long', label: 'L', cls: 'long' }, { value: 'none', label: 'None', cls: 'none' }] }
+        ]
+      },
+      {
+        id: 'chaos2', title: 'Chaos #2',
+        fields: [
+          { id: 'cast', label: 'Cast', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'type', label: 'Inferno/Tsunami', type: 'linked-swap',
+            linkedTo: { section: 'chaos1', field: 'type' },
+            options: [{ value: 'fire', label: 'Inferno', cls: 'fire', icon: '🔥' }, { value: 'water', label: 'Tsunami', cls: 'water', icon: '🌊' }] }
+        ]
+      },
+      {
+        id: 'mana', title: 'Mana Charge & Release',
+        fields: [
+          { id: 'chargeLightning', label: 'Charge: Lightning', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'chargeIce', label: 'Charge: Ice', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'releaseLightning', label: 'Release: Lightning', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
+          { id: 'releaseIce', label: 'Release: Ice', type: 'binary',
+            options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] }
+        ],
+        customRender() {
+          const btns = (fieldId) => `
+            <div class="btn-group">
+              <button class="opt-btn real" data-section="mana" data-field="${fieldId}" data-value="real">Real</button>
+              <button class="opt-btn fake" data-section="mana" data-field="${fieldId}" data-value="fake">Fake</button>
+            </div>`;
+          return `
+            <div class="mana-grid">
+              <div></div>
+              <div class="mana-col-label">Charge</div>
+              <div class="mana-col-label">Release</div>
+              <div class="mana-row-label">Lightning</div>
+              ${btns('chargeLightning')}
+              ${btns('releaseLightning')}
+              <div class="mana-row-label">Ice</div>
+              ${btns('chargeIce')}
+              ${btns('releaseIce')}
+            </div>`;
+        }
+      }
+    ],
+
+    buildCallouts(state) {
+      const spreadStackLine = (key, orderWord) => {
+        const s = state[key];
+        if (!s.cast || !s.duration) return null;
+        const shortName = s.duration === 'lightning-long' ? 'Water' : 'Lightning';
+        const realCast = s.cast === 'real';
+        const shortEffect = shortName === 'Water'
+          ? (realCast ? 'STACK' : 'SPREAD')
+          : (realCast ? 'SPREAD' : 'STACK');
+        return `<span class="icon">🌀</span>${orderWord} <span class="fact">${shortEffect}</span> is <span class="fact">${shortName.toUpperCase()}</span>`;
+      };
+
+      const accelLine = (key) => {
+        const s = state[key];
+        if (!s.cast || !s.accel) return null;
+        if (s.accel === 'none') return `<span class="icon">💣</span>No accel this set`;
+        const realCast = s.cast === 'real';
+        const effect = realCast ? 'STILLNESS' : 'MOTION';
+        const order = s.accel === 'short' ? '1st' : '2nd';
+        return `<span class="icon">💣</span>Your accel is ${order} <span class="fact">${effect}</span>`;
+      };
+
+      const shriekLine = (key, orderWord) => {
+        const s = state[key];
+        if (!s.cast) return null;
+        const realCast = s.cast === 'real';
+        const shriekEffect = realCast ? 'LOOK AWAY from' : 'LOOK AT';
+        return `<span class="icon">👁️</span><span class="fact">${shriekEffect}</span> ${orderWord} shrieks`;
+      };
+
+      const chaosLine = (type) => {
+        const key = (state.chaos1.type === type) ? 'chaos1' : (state.chaos2.type === type) ? 'chaos2' : null;
+        if (!key) return null;
+        const c = state[key];
+        if (!c.cast) return null;
+        const name = type === 'fire' ? 'Inferno' : 'Tsunami';
+        const realCast = c.cast === 'real';
+        let effect;
+        if (type === 'fire') {
+          effect = realCast ? 'MOVE (twister)' : 'STAY (donut)';
+        } else {
+          effect = realCast ? 'STAY (donut)' : 'MOVE (twister)';
+        }
+        const icon = type === 'fire' ? '🔥' : '🌊';
+        return `<span class="icon">${icon}</span>${name}: <span class="fact">${effect}</span>`;
+      };
+
+      const calloutA = joinOrPlaceholder([
+        spreadStackLine('exdeath1', '1st'),
+        accelLine('exdeath1'),
+        shriekLine('exdeath1', '1st')
+      ], 'Fill in Neo Exdeath #1 above.');
+
+      const calloutB = joinOrPlaceholder([
+        chaosLine('fire'),
+        spreadStackLine('exdeath2', '2nd'),
+        accelLine('exdeath2')
+      ], 'Fill in Chaos (Inferno) and Neo Exdeath #2 above.');
+
+      const calloutC = joinOrPlaceholder([
+        shriekLine('exdeath2', '2nd'),
+        chaosLine('water')
+      ], 'Fill in Neo Exdeath #2 shriek and Chaos (Tsunami) above.');
+
+      const m = state.mana;
+      const lightningResult = xnor(m.chargeLightning, m.releaseLightning);
+      const iceResult = xnor(m.chargeIce, m.releaseIce);
+      const calloutD = joinOrPlaceholder([
+        lightningResult ? `<span class="icon">⚡</span>Lightning: <span class="fact">${lightningResult}</span>` : null,
+        iceResult ? `<span class="icon">❄️</span>Ice: <span class="fact">${iceResult}</span>` : null
+      ], 'Fill in Mana Charge and Release above.');
+
+      return [calloutA, calloutB, calloutC, calloutD];
+    }
+  };
+
+  /* ============================================================
+     PRESET: M12S - Idyllic Dream (work-in-progress stub)
+     Demonstrates a structurally different mechanic (persistent
+     memory of a clone tether) using the same engine.
+     ============================================================ */
+
+  const M12S_IDYLLIC_PRESET = {
+    id: 'm12s-idyllic',
+    name: 'M12S - Idyllic Dream (WIP)',
+    layoutRows: [
+      ['cardOrInter', 'northSouth'],
+      ['clone'],
+      ['resolveOrder']
+    ],
+    sections: [
+      {
+        id: 'cardOrInter', title: 'Cardinals or Intercards',
+        fields: [
+          { id: 'value', label: 'Markers', type: 'binary',
+            options: [{ value: 'cardinal', label: 'Cardinals', cls: 'generic' }, { value: 'intercardinal', label: 'Intercards', cls: 'generic' }] }
+        ]
+      },
+      {
+        id: 'northSouth', title: 'North or South',
+        fields: [
+          { id: 'value', label: 'Side', type: 'binary',
+            options: [{ value: 'north', label: 'North', cls: 'generic' }, { value: 'south', label: 'South', cls: 'generic' }] }
+        ]
+      },
+      {
+        id: 'clone', title: 'Clone Tether (Staging)',
+        fields: [
+          { id: 'position', label: 'My clone tether', type: 'select',
+            options: [
+              { value: 'n', label: 'N' }, { value: 'ne', label: 'NE' }, { value: 'e', label: 'E' },
+              { value: 'se', label: 'SE' }, { value: 's', label: 'S' }, { value: 'sw', label: 'SW' },
+              { value: 'w', label: 'W' }, { value: 'nw', label: 'NW' }
+            ]
+          }
+        ],
+        customRender() {
+          const btn = (value, label, color) =>
+            `<button class="compass-btn opt-btn color-${color}" data-section="clone" data-field="position" data-value="${value}">${label}</button>`;
+          return `
+            <div class="compass-grid">
+              ${btn('nw', 'D2', 'purple')}${btn('n', 'S1', 'red')}${btn('ne', 'S2', 'red')}
+              ${btn('w', 'D1', 'purple')}<div class="compass-center">⌾</div>${btn('e', 'S1', 'purple')}
+              ${btn('sw', 'D2', 'red')}${btn('s', 'D1', 'red')}${btn('se', 'S2', 'purple')}
+            </div>`;
+        }
+      },
+      {
+        id: 'resolveOrder', title: 'Stack/Defam Order',
+        fields: [
+          { id: 'value', label: 'Goes off first', type: 'binary',
+            options: [{ value: 'stack', label: 'Stack', cls: 'generic' }, { value: 'defam', label: 'Defam', cls: 'generic' }] }
+        ]
+      }
+    ],
+
+    buildCallouts(state) {
+      const colorMap = { n: 'red', ne: 'red', e: 'purple', se: 'purple', s: 'red', sw: 'red', w: 'purple', nw: 'purple' };
+      const labelMap = { n: 'S1', ne: 'S2', e: 'S1', se: 'S2', s: 'D1', sw: 'D2', w: 'D1', nw: 'D2' };
+      const zoneMap = {
+        n: { color: 'RED', cells: 'N/NE' }, s: { color: 'RED', cells: 'N/NE' },
+        ne: { color: 'YELLOW', cells: 'E/SE' }, sw: { color: 'YELLOW', cells: 'E/SE' },
+        e: { color: 'BLUE', cells: 'S/SW' }, w: { color: 'BLUE', cells: 'S/SW' },
+        se: { color: 'PURPLE', cells: 'W/NW' }, nw: { color: 'PURPLE', cells: 'W/NW' }
+      };
+
+      const lines = [];
+
+      if (state.cardOrInter.value) {
+        lines.push(`<span class="icon">📍</span>Markers: <span class="fact">${state.cardOrInter.value.toUpperCase()}</span>`);
+      }
+      if (state.northSouth.value) {
+        lines.push(`<span class="icon">🧭</span>Side: <span class="fact">${state.northSouth.value.toUpperCase()}</span>`);
+      }
+
+      const pos = state.clone.position;
+      if (pos) {
+        const color = colorMap[pos];
+        const label = labelMap[pos];
+        const isD = label.startsWith('D');
+        const resolveDir = color === 'red'
+          ? (isD ? 'NORTHEAST' : 'EAST')
+          : (isD ? 'NORTHWEST' : 'WEST');
+        const mechName = isD ? `Defam ${label.charAt(1)}` : 'Stack Tether';
+        lines.push(`<span class="icon">🕐</span><span class="fact">${mechName}</span> (${pos.toUpperCase()})`);
+        lines.push(`<span class="icon">➡️</span>Resolve to <span class="fact">${resolveDir}</span>`);
+        const zone = zoneMap[pos];
+        lines.push(`<span class="icon">🔗</span>Pick up tether: <span class="fact">${zone.color}</span> zone (${zone.cells})`);
+      }
+
+      if (state.resolveOrder.value) {
+        const orderText = state.resolveOrder.value === 'stack' ? 'STACKS FIRST, then Defam' : 'DEFAM FIRST, then Stacks';
+        lines.push(`<span class="icon">⚔️</span>Resolve order: <span class="fact">${orderText}</span>`);
+      }
+
+      return [joinOrPlaceholder(lines, 'Fill in the sections above to build your memory callout.')];
+    },
+
+    postRender(state) {
+      const zoneClassForPosition = {
+        n: 'red', s: 'red',
+        ne: 'yellow', sw: 'yellow',
+        e: 'blue', w: 'blue',
+        se: 'purple-outline', nw: 'purple-outline'
+      };
+      const cellsForZoneClass = {
+        red: ['n', 'ne'], yellow: ['e', 'se'], blue: ['s', 'sw'], 'purple-outline': ['w', 'nw']
+      };
+
+      const buttons = document.querySelectorAll('[data-section="clone"][data-field="position"]');
+      buttons.forEach(b => b.classList.remove('zone-red', 'zone-yellow', 'zone-blue', 'zone-purple-outline'));
+
+      const pos = state.clone.position;
+      if (!pos) return;
+
+      const zoneClass = zoneClassForPosition[pos];
+      const cells = cellsForZoneClass[zoneClass];
+      cells.forEach(v => {
+        const btn = document.querySelector(`[data-section="clone"][data-field="position"][data-value="${v}"]`);
+        if (btn) btn.classList.add(`zone-${zoneClass}`);
+      });
+    }
+  };
+
+  const PRESETS = [DMU_P4_PRESET, M12S_IDYLLIC_PRESET];
+
+  /* ============================================================
+     APP WIRING
+     ============================================================ */
+
+  let currentPreset = PRESETS[0];
+  let state = makeInitialState(currentPreset);
+
+  function populatePresetSelect() {
+    renderPresetDropdown();
+  }
+
+  function renderPresetDropdown() {
+    document.getElementById('preset-dropdown-btn').textContent = currentPreset.name;
+
+    const list = document.getElementById('preset-dropdown-list');
+    list.innerHTML = PRESETS.map(p =>
+      `<div class="preset-option${p.id === currentPreset.id ? ' active' : ''}" data-preset-id="${p.id}">${p.name}</div>`
+    ).join('');
+
+    list.querySelectorAll('.preset-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        currentPreset = PRESETS.find(p => p.id === opt.dataset.presetId);
+        state = makeInitialState(currentPreset);
+        buildSections();
+        renderPresetDropdown();
+        list.classList.add('hidden');
+        render();
+      });
+    });
+  }
+
+  function togglePresetDropdown() {
+    document.getElementById('preset-dropdown-list').classList.toggle('hidden');
+  }
+
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('preset-dropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      document.getElementById('preset-dropdown-list').classList.add('hidden');
+    }
+  });
+
+  function buildSections() {
+    const container = document.getElementById('sections');
+    const rows = currentPreset.layoutRows || currentPreset.sections.map(s => [s.id]);
+    container.innerHTML = rows.map(rowIds => {
+      const cols = rowIds.map(id => {
+        const section = currentPreset.sections.find(s => s.id === id);
+        return `<div class="section-col">${sectionHTML(section)}</div>`;
+      }).join('');
+      return `<div class="section-row">${cols}</div>`;
+    }).join('');
+  }
+
+  function wireGlobalClicks() {
+    document.getElementById('panel').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-section]');
+      if (!btn) return;
+      handleFieldClick(currentPreset, state, btn.dataset.section, btn.dataset.field, btn.dataset.value);
+      render();
+    });
+  }
+
+  function render() {
+    renderButtonStates(currentPreset, state);
+    renderCallouts(currentPreset, state);
+    if (currentPreset.postRender) currentPreset.postRender(state);
+  }
+
+  function resetAll() {
+    state = makeInitialState(currentPreset);
+    render();
+  }
+
+  function togglePanel() {
+    document.getElementById('panel').classList.toggle('hidden');
+  }
+
+  populatePresetSelect();
+  buildSections();
+  wireGlobalClicks();
+  render();
+</script>
+
+</body>
+</html>

@@ -2,7 +2,7 @@
  
 An interactive ACT/OverlayPlugin overlay for tracking mechanic as if you are using a macro in FFXIV ultimates and savage fights. Made this because I want to clean up my macros a little bit. I based this on the WTFDIG helpers as an alternative for people who dont wanna leave their game window. 
  
-**Current version:** v0.1.0 
+**Current version:** v0.1.1 
 Includes Dancing Mad (Ultimate) p4 
 M12Sp2 Idyllic dream, basic version 
 
@@ -25,5 +25,5 @@ Making it more modular to people can add presets themselves or different strats,
 
 
 ## Changelog
- 
+- **v0.1.1** — Fixed incorrect logic on water/lightning and fixed order in call out box according to when mechanic resolves. added colour coding to real fake callout for ice/lightning
 - **v0.1.0** — Initial public version. DMU P4 fully built (Exdeath/Chaos Real/Fake tracking, Accel Bomb exclusivity, Mana Charge/Release XNOR). Idyllic Dream stub added (clone tether, tether pickup zones). Custom dropdown to work around OverlayPlugin's CEF not rendering native `<select>` popups.

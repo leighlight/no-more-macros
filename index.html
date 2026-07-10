@@ -249,6 +249,8 @@
   }
 
   .callout .fact { color: #f0e0a0; font-weight: 700; }
+  .callout .fact-real { color: #4fd08a; font-weight: 700; }
+  .callout .fact-fake { color: #d06aff; font-weight: 700; }
   .callout .icon { margin-right: 4px; }
 
   #callout-body { margin-top: 4px; }
@@ -440,7 +442,7 @@
             options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
           { id: 'duration', label: 'Water/Lightning', type: 'linked-swap',
             linkedTo: { section: 'exdeath2', field: 'duration' },
-            options: [{ value: 'lightning-long', label: 'Short', cls: 'short' }, { value: 'water-long', label: 'Long', cls: 'long' }] },
+            options: [{ value: 'short', label: 'Short', cls: 'short' }, { value: 'long', label: 'Long', cls: 'long' }] },
           { id: 'accel', label: 'Accel', type: 'linked-exclusive',
             linkedTo: { section: 'exdeath2', field: 'accel' }, exclusiveValues: ['short', 'long'],
             options: [{ value: 'short', label: 'S', cls: 'short' }, { value: 'long', label: 'L', cls: 'long' }, { value: 'none', label: 'None', cls: 'none' }] }
@@ -463,7 +465,7 @@
             options: [{ value: 'real', label: 'Real', cls: 'real' }, { value: 'fake', label: 'Fake', cls: 'fake' }] },
           { id: 'duration', label: 'Water/Lightning', type: 'linked-swap',
             linkedTo: { section: 'exdeath1', field: 'duration' },
-            options: [{ value: 'lightning-long', label: 'Short', cls: 'short' }, { value: 'water-long', label: 'Long', cls: 'long' }] },
+            options: [{ value: 'short', label: 'Short', cls: 'short' }, { value: 'long', label: 'Long', cls: 'long' }] },
           { id: 'accel', label: 'Accel', type: 'linked-exclusive',
             linkedTo: { section: 'exdeath1', field: 'accel' }, exclusiveValues: ['short', 'long'],
             options: [{ value: 'short', label: 'S', cls: 'short' }, { value: 'long', label: 'L', cls: 'long' }, { value: 'none', label: 'None', cls: 'none' }] }
@@ -514,18 +516,22 @@
     ],
 
     buildCallouts(state) {
-      const spreadStackLine = (key, orderWord) => {
+      // ASSUMPTION (confirmed partially): Cast Real = Lightning, Cast Fake = Water.
+      // Effect is fixed per debuff identity: Lightning = SPREAD, Water = STACK.
+      // Only the Real+Lightning=Spread case was directly confirmed from a screenshot;
+      // the Water=Stack side is inferred. Flag if this turns out backwards.
+      const spreadStackLine = (key) => {
+        if (!key) return null;
         const s = state[key];
         if (!s.cast || !s.duration) return null;
-        const shortName = s.duration === 'lightning-long' ? 'Water' : 'Lightning';
-        const realCast = s.cast === 'real';
-        const shortEffect = shortName === 'Water'
-          ? (realCast ? 'STACK' : 'SPREAD')
-          : (realCast ? 'SPREAD' : 'STACK');
-        return `<span class="icon">🌀</span>${orderWord} <span class="fact">${shortEffect}</span> is <span class="fact">${shortName.toUpperCase()}</span>`;
+        const debuffName = s.cast === 'real' ? 'Lightning' : 'Water';
+        const effect = debuffName === 'Lightning' ? 'SPREAD' : 'STACK';
+        const orderWord = s.duration === 'short' ? '1st' : '2nd';
+        return `<span class="icon">🌀</span>${orderWord} <span class="fact">${effect}</span> is <span class="fact">${debuffName.toUpperCase()}</span>`;
       };
 
       const accelLine = (key) => {
+        if (!key) return null;
         const s = state[key];
         if (!s.cast || !s.accel) return null;
         if (s.accel === 'none') return `<span class="icon">💣</span>No accel this set`;
@@ -533,6 +539,15 @@
         const effect = realCast ? 'STILLNESS' : 'MOTION';
         const order = s.accel === 'short' ? '1st' : '2nd';
         return `<span class="icon">💣</span>Your accel is ${order} <span class="fact">${effect}</span>`;
+      };
+
+      // Finds whichever Exdeath set (1 or 2) currently has fieldName set to value.
+      // Used so callout boxes group by ACTUAL resolve timing (Short=1st, Long=2nd)
+      // rather than by which Grand Cross cast the info originally came from.
+      const findExdeathBy = (fieldName, value) => {
+        if (state.exdeath1[fieldName] === value) return 'exdeath1';
+        if (state.exdeath2[fieldName] === value) return 'exdeath2';
+        return null;
       };
 
       const shriekLine = (key, orderWord) => {
@@ -561,16 +576,16 @@
       };
 
       const calloutA = joinOrPlaceholder([
-        spreadStackLine('exdeath1', '1st'),
-        accelLine('exdeath1'),
+        spreadStackLine(findExdeathBy('duration', 'short')),
+        accelLine(findExdeathBy('accel', 'short')),
         shriekLine('exdeath1', '1st')
-      ], 'Fill in Neo Exdeath #1 above.');
+      ], 'Fill in Neo Exdeath above.');
 
       const calloutB = joinOrPlaceholder([
         chaosLine('fire'),
-        spreadStackLine('exdeath2', '2nd'),
-        accelLine('exdeath2')
-      ], 'Fill in Chaos (Inferno) and Neo Exdeath #2 above.');
+        spreadStackLine(findExdeathBy('duration', 'long')),
+        accelLine(findExdeathBy('accel', 'long'))
+      ], 'Fill in Chaos (Inferno) and Neo Exdeath above.');
 
       const calloutC = joinOrPlaceholder([
         shriekLine('exdeath2', '2nd'),
@@ -580,9 +595,10 @@
       const m = state.mana;
       const lightningResult = xnor(m.chargeLightning, m.releaseLightning);
       const iceResult = xnor(m.chargeIce, m.releaseIce);
+      const factClass = (result) => result === 'REAL' ? 'fact-real' : 'fact-fake';
       const calloutD = joinOrPlaceholder([
-        lightningResult ? `<span class="icon">⚡</span>Lightning: <span class="fact">${lightningResult}</span>` : null,
-        iceResult ? `<span class="icon">❄️</span>Ice: <span class="fact">${iceResult}</span>` : null
+        lightningResult ? `<span class="icon">⚡</span>Lightning: <span class="${factClass(lightningResult)}">${lightningResult}</span>` : null,
+        iceResult ? `<span class="icon">❄️</span>Ice: <span class="${factClass(iceResult)}">${iceResult}</span>` : null
       ], 'Fill in Mana Charge and Release above.');
 
       return [calloutA, calloutB, calloutC, calloutD];
